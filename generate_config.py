@@ -11,25 +11,13 @@ client = docker.from_env()
 
 def generate_supervisor_config():
     program_name = ''
-    info = client.info()
-    services = []
-    containers = []
-    if info['Swarm']['NodeID'] == "":
-        containers = client.containers.list()
-    else:
-        services = client.services.list()
+    containers = client.containers.list()
 
     for container in containers:
         supervisor_config = ''
         labels = container.attrs['Config']['Labels']
         if 'bugloos.supervisor.program_name' in labels:
             program_name = generate_supervisor_ini(container, labels)
-
-    for service in services:
-        supervisor_config = ''
-        labels = service.attrs['Spec']['Labels']
-        if 'bugloos.supervisor.program_name' in labels:
-            program_name = generate_supervisor_ini(service, labels)
 
     if len(program_name) > 0:
         server.supervisor.reloadConfig()
