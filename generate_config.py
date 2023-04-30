@@ -23,8 +23,9 @@ def generate_supervisor_config():
         labels = container.attrs['Config']['Labels']
         if 'bugloos.supervisor.program_name' in labels:
             program_name = labels.get('bugloos.supervisor.program_name')
-            command = "docker run --rm " + container.attrs.get('Image') + " " + labels.get('bugloos.supervisor.command')
+            command = "docker exec " + container.attrs.get('Id') + " " + labels.get('bugloos.supervisor.command')
             numprocs = labels.get('bugloos.supervisor.numprocs', '1')
+            process_name = labels.get('bugloos.supervisor.process_name', '')
             directory = labels.get('bugloos.supervisor.directory', '/')
             autostart = labels.get('bugloos.supervisor.autostart', 'true')
             autorestart = labels.get('bugloos.supervisor.autorestart', 'true')
@@ -39,6 +40,7 @@ def generate_supervisor_config():
             config[f"""program:{program_name}"""]={
             "command": command,
             "numprocs": numprocs,
+            "process_name": process_name,
             "directory": directory,
             "autostart": autostart,
             "autorestart": autorestart,
@@ -59,6 +61,7 @@ def generate_supervisor_config():
             program_name = labels.get('bugloos.supervisor.program_name')
             command = labels.get('bugloos.supervisor.command')
             numprocs = labels.get('bugloos.supervisor.numprocs', '1')
+            process_name = labels.get('bugloos.supervisor.process_name', '')
             directory = labels.get('bugloos.supervisor.directory', '/')
             autostart = labels.get('bugloos.supervisor.autostart', 'true')
             autorestart = labels.get('bugloos.supervisor.autorestart', 'true')
@@ -75,6 +78,7 @@ def generate_supervisor_config():
             config[f"""program:{program_name}"""]={
             "command": command,
             "numprocs": numprocs,
+            "process_name": process_name,
             "directory": directory,
             "autostart": autostart,
             "autorestart": autorestart,
