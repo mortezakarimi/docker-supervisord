@@ -17,8 +17,8 @@ docker-build:
         tag=":$CI_COMMIT_REF_SLUG"
         echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
       fi
-    - docker build --pull -t "$Nexus_Repository_Url/$CI_PROJECT_NAME:${tag}" .
-    - docker push "$Nexus_Repository_Url/$CI_PROJECT_NAME:${tag}"
+    - docker build --pull -t "$Nexus_Repository_Url/$CI_PROJECT_NAME${tag}" .
+    - docker push "$Nexus_Repository_Url/$CI_PROJECT_NAME${tag}"
   # Run this job in a branch where a Dockerfile exists
   rules:
     - if: $CI_COMMIT_BRANCH
