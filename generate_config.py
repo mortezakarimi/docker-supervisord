@@ -1,8 +1,9 @@
 #!/bin/env python
 import docker
-from xmlrpc.client import ServerProxy
+from xmlrpc.client import ServerProxy, Fault
 import configparser
 import sys
+import time
 
 server = ServerProxy('http://localhost:9001/RPC2')
 
@@ -11,17 +12,35 @@ client = docker.from_env()
 
 def generate_supervisor_config():
     program_name = ''
-    containers = client.containers.list()
+    info = client.info()
+    services = []
+    containers = []
+    if info['Swarm']['NodeID'] == "":
+        containers = client.containers.list()
+    else:
+        services = client.services.list()
 
     for container in containers:
-        supervisor_config = ''
         labels = container.attrs['Config']['Labels']
         if 'bugloos.supervisor.program_name' in labels:
             program_name = generate_supervisor_ini(container, labels)
 
+    for service in services:
+        labels = service.attrs['Spec']['Labels']
+        if 'bugloos.supervisor.program_name' in labels:
+            tasks = service.tasks(filters={"desired-state": "running"})
+            if len(tasks) > 0:
+                container_id = tasks[0]['Status']['ContainerStatus']['ContainerID']
+                container = client.containers.get(container_id)
+                program_name = generate_supervisor_ini(container, labels)
+
     if len(program_name) > 0:
         server.supervisor.reloadConfig()
-        server.supervisor.addProcessGroup(program_name)
+        try:
+            server.supervisor.addProcessGroup(program_name)
+        except Fault as e:
+            if e.faultCode != 10:
+                raise e
     sys.exit(0)
 
 
@@ -63,9 +82,30 @@ def generate_supervisor_ini(container, labels):
     return program_name
 
 
+def is_service_ready(service):
+    """
+    Checks if a service is ready by verifying that all tasks are running and
+    healthy.
+    """
+    tasks = service.tasks()
+    for task in tasks:
+        if task.get('Status').get('State') != 'running':
+            return False
+    return True
+
+
 if __name__ == '__main__':
     try:
         generate_supervisor_config()
+        for event in client.events(decode=True):
+            if event.get('Type') == 'service':
+                service_id = event.get('Actor').get('ID')
+                service = client.services.get(service_id)
+                while not is_service_ready(service):
+                    print(f'Service {service.name} is updating')
+                    time.sleep(10)  # Wait for 10 seconds before checking again
+                print(f'Service {service.name} is ready')
+                generate_supervisor_config()
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
