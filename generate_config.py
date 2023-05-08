@@ -46,7 +46,6 @@ def generate_supervisor_config():
             if e.faultCode == 10:
                 server.supervisor.removeProcessGroup(program_name)
                 server.supervisor.addProcessGroup(program_name)
-    sys.exit(0)
 
 
 def generate_supervisor_ini(container, labels):
