@@ -39,8 +39,7 @@ def generate_supervisor_config():
         try:
             server.supervisor.addProcessGroup(program_name)
         except Fault as e:
-            if e.faultCode != 10:
-                raise e
+            print(e.faultString)
     sys.exit(0)
 
 
