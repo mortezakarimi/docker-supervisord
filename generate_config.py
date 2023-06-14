@@ -20,16 +20,12 @@ def generate_supervisor_config():
     for service in services:
         labels = service.attrs['Spec']['Labels']
         if 'bugloos.supervisor.program_name' in labels:
-            tasks = service.tasks(filters={"desired-state": "running"})
-            if len(tasks) > 0:
-                container_id = tasks[0]['Status']['ContainerStatus']['ContainerID']
-                container = client.containers.get(container_id)
-                program_name = generate_supervisor_ini(container, labels)
+            program_name = generate_supervisor_ini(service, labels)
 
 
-def generate_supervisor_ini(container, labels):
+def generate_supervisor_ini(service, labels):
     program_name = labels.get('bugloos.supervisor.program_name')
-    command = "docker exec " + container.attrs.get('Id') + " " + labels.get('bugloos.supervisor.command')
+    command = "sh -c 'docker exec $(docker ps -q -f name=" + service.attrs['Spec']['Name'] + " -f health=healthy) " + labels.get('bugloos.supervisor.command')+"'"
     numprocs = labels.get('bugloos.supervisor.numprocs', '1')
     process_name = labels.get('bugloos.supervisor.process_name', '')
     directory = labels.get('bugloos.supervisor.directory', '/')
@@ -91,14 +87,6 @@ def is_service_ready(service):
 if __name__ == '__main__':
     try:
         generate_supervisor_config()
-        for event in client.events(decode=True, filters={'type': 'service', 'event': 'update'}):
-            service_id = event.get('Actor').get('ID')
-            service = client.services.get(service_id)
-            while not is_service_ready(service):
-                print(f'Service {service.name} is updating')
-                time.sleep(10)  # Wait for 10 seconds before checking again
-            print(f'Service {service.name} is ready')
-            generate_supervisor_config()
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
