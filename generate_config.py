@@ -1,6 +1,7 @@
 #!/bin/env python
 import docker
 from xmlrpc.client import ServerProxy, Fault
+import os
 import configparser
 import sys
 import time
@@ -33,14 +34,6 @@ def generate_supervisor_config():
                 container_id = tasks[0]['Status']['ContainerStatus']['ContainerID']
                 container = client.containers.get(container_id)
                 program_name = generate_supervisor_ini(container, labels)
-
-    if len(program_name) > 0:
-        server.supervisor.reloadConfig()
-        try:
-            server.supervisor.addProcessGroup(program_name)
-        except Fault as e:
-            print(e.faultString)
-            server.supervisor.restart()
 
 
 def generate_supervisor_ini(container, labels):
@@ -76,8 +69,19 @@ def generate_supervisor_ini(container, labels):
         "redirect_stderr": redirect_stderr,
         "environment": environment,
     }
-    with open(f"""/etc/supervisor.d/{program_name}.ini""", 'w') as f:
+    filePath = f"""/etc/supervisor.d/{program_name}.ini"""
+    if os.path.exists(filePath):
+        os.unlink(filePath)
+
+    with open(filePath, 'w') as f:
         config.write(f)
+
+    server.supervisor.reloadConfig()
+    try:
+        server.supervisor.addProcessGroup(program_name)
+    except Fault as e:
+        print(e.faultString)
+        server.supervisor.restart()
     return program_name
 
 
