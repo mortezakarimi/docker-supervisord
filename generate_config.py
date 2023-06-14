@@ -12,19 +12,10 @@ client = docker.from_env()
 
 
 def generate_supervisor_config():
-    program_name = ''
     info = client.info()
     services = []
-    containers = []
-    if info['Swarm']['NodeID'] == "":
-        containers = client.containers.list()
-    else:
+    if info['Swarm']['NodeID'] != "":
         services = client.services.list()
-
-    for container in containers:
-        labels = container.attrs['Config']['Labels']
-        if 'bugloos.supervisor.program_name' in labels:
-            program_name = generate_supervisor_ini(container, labels)
 
     for service in services:
         labels = service.attrs['Spec']['Labels']
@@ -100,15 +91,14 @@ def is_service_ready(service):
 if __name__ == '__main__':
     try:
         generate_supervisor_config()
-        for event in client.events(decode=True):
-            if event.get('Type') == 'service':
-                service_id = event.get('Actor').get('ID')
-                service = client.services.get(service_id)
-                while not is_service_ready(service):
-                    print(f'Service {service.name} is updating')
-                    time.sleep(10)  # Wait for 10 seconds before checking again
-                print(f'Service {service.name} is ready')
-                generate_supervisor_config()
+        for event in client.events(decode=True, filters={'type': 'service', 'event': 'update'}):
+            service_id = event.get('Actor').get('ID')
+            service = client.services.get(service_id)
+            while not is_service_ready(service):
+                print(f'Service {service.name} is updating')
+                time.sleep(10)  # Wait for 10 seconds before checking again
+            print(f'Service {service.name} is ready')
+            generate_supervisor_config()
     except Exception as e:
         print(f"An error occurred: {e}")
         sys.exit(1)
