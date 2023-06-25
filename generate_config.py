@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 import configparser
 import sys
 import time
@@ -6,9 +6,6 @@ import docker
 import subprocess
 
 client = docker.from_env()
-
-LAST_UPDATE_FILE = '/var/last_%s_update.txt'
-
 
 def generate_supervisor_config():
     info = client.info()
